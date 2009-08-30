@@ -65,6 +65,8 @@ module Rack::Cache
           else
             pass
           end
+        elsif @request.purge?
+          purge
         else
           invalidate
         end
@@ -228,6 +230,13 @@ module Rack::Cache
       record :store
       metastore.store(@request, response, entitystore)
       response.headers['Age'] = response.age.to_s
+    end
+    
+    def purge
+      record :purge
+      key = metastore.cache_key(@request)
+      metastore.purge(key)
+      Response.new(200, {}, 'Purged')
     end
   end
 end

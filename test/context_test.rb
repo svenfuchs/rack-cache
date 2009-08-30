@@ -746,4 +746,24 @@ describe 'Rack::Cache::Context' do
       response['X-Response-Count'].should.equal '3'
     end
   end
+  
+  describe 'PURGE' do
+    it 'purges on PURGE requests' do
+      @app = lambda { |env| fail('app should not be called') }
+      request 'purge', '/'
+      cache.trace.should.include :purge
+    end
+
+    it 'purges previously cached responses' do
+      respond_with 200, { 'Cache-Control' => 'public', 'ETag' => '12345' }, 'cached response body'
+      get '/'
+      cache.trace.should.include :store
+      
+      request 'purge', '/'
+      cache.trace.should.include :purge
+      
+      get '/'
+      cache.trace.should.include :miss
+    end
+  end
 end

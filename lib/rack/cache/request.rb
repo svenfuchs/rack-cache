@@ -17,6 +17,10 @@ module Rack::Cache
     def request_method
       @env['REQUEST_METHOD']
     end
+    
+    def purge?
+      request_method == "PURGE"
+    end
 
     # A CacheControl instance based on the request's Cache-Control header.
     def cache_control
