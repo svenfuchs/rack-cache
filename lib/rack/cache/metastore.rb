@@ -81,7 +81,7 @@ module Rack::Cache
 
     # Generate a cache key for the request.
     def cache_key(request)
-      keygen = request.env['rack-cache.cache_key'] || Key
+      keygen = request.env['rack-cache.cache_key'] || Utils::Key
       keygen.call(request)
     end
 
