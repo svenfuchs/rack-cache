@@ -1,5 +1,5 @@
-require 'rack/cache/key'
 require 'rack/cache/storage'
+require 'rack/cache/utils/key'
 
 module Rack::Cache
 
@@ -126,7 +126,7 @@ module Rack::Cache
   private
     def initialize_options(options={})
       @default_options = {
-        'rack-cache.cache_key'        => Key,
+        'rack-cache.cache_key'        => Utils::Key,
         'rack-cache.verbose'          => true,
         'rack-cache.storage'          => Rack::Cache::Storage.instance,
         'rack-cache.metastore'        => 'heap:/',
