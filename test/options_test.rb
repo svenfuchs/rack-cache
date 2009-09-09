@@ -1,19 +1,18 @@
 require "#{File.dirname(__FILE__)}/spec_setup"
-require 'rack/cache/options'
-
-module Rack::Cache::Options
-  option_accessor :foo
-end
+require 'rack/cache/utils/options'
 
 class MockOptions
-  include Rack::Cache::Options
+  include Rack::Cache::Utils::Options
+
+  option_accessor :foo
+
   def initialize
     @env = nil
     initialize_options
   end
 end
 
-describe 'Rack::Cache::Options' do
+describe 'Rack::Cache::Utils::Options' do
   before { @options = MockOptions.new }
 
   describe '#set' do
@@ -50,28 +49,32 @@ describe 'Rack::Cache::Options' do
     @options.set(:foo, &block)
     @options.options['rack-cache.foo'].should.equal block
   end
+end
+
+describe 'Rack::Cache::Context using Rack::Cache::Utils::Options' do
+  before { @context = Rack::Cache::Context.new(nil) }
 
   it 'allows the cache key generator to be configured' do
-    @options.should.respond_to :cache_key
-    @options.should.respond_to :cache_key=
+    @context.should.respond_to :cache_key
+    @context.should.respond_to :cache_key=
   end
 
   it 'allows the meta store to be configured' do
-    @options.should.respond_to :metastore
-    @options.should.respond_to :metastore=
-    @options.metastore.should.not.be nil
+    @context.should.respond_to :metastore
+    @context.should.respond_to :metastore=
+    @context.metastore.should.not.be nil
   end
 
   it 'allows the entity store to be configured' do
-    @options.should.respond_to :entitystore
-    @options.should.respond_to :entitystore=
-    @options.entitystore.should.not.be nil
+    @context.should.respond_to :entitystore
+    @context.should.respond_to :entitystore=
+    @context.entitystore.should.not.be nil
   end
 
   it 'allows log verbosity to be configured' do
-    @options.should.respond_to :verbose
-    @options.should.respond_to :verbose=
-    @options.should.respond_to :verbose?
-    @options.verbose.should.not.be.nil
+    @context.should.respond_to :verbose
+    @context.should.respond_to :verbose=
+    @context.should.respond_to :verbose?
+    @context.verbose.should.not.be.nil
   end
 end

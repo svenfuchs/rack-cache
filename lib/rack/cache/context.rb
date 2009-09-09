@@ -1,13 +1,14 @@
-require 'rack/cache/options'
 require 'rack/cache/request'
 require 'rack/cache/response'
 require 'rack/cache/storage'
+require 'rack/cache/utils/key'
+require 'rack/cache/utils/options'
 
 module Rack::Cache
   # Implements Rack's middleware interface and provides the context for all
   # cache logic, including the core logic engine.
   class Context
-    include Rack::Cache::Options
+    include Rack::Cache::Utils::Options
 
     # Array of trace Symbols
     attr_reader :trace
@@ -15,11 +16,92 @@ module Rack::Cache
     # The Rack application object immediately downstream.
     attr_reader :backend
 
+    # Enable verbose trace logging. This option is currently enabled by
+    # default but is likely to be disabled in a future release.
+    option_accessor :verbose
+
+    # The storage resolver. Defaults to the Rack::Cache.storage singleton instance
+    # of Rack::Cache::Storage. This object is responsible for resolving metastore
+    # and entitystore URIs to an implementation instances.
+    option_accessor :storage
+
+    # A URI specifying the meta-store implementation that should be used to store
+    # request/response meta information. The following URIs schemes are
+    # supported:
+    #
+    # * heap:/
+    # * file:/absolute/path or file:relative/path
+    # * memcached://localhost:11211[/namespace]
+    #
+    # If no meta store is specified the 'heap:/' store is assumed. This
+    # implementation has significant draw-backs so explicit configuration is
+    # recommended.
+    option_accessor :metastore
+
+    # A custom cache key generator, which can be anything that responds to :call.
+    # By default, this is the Rack::Cache::Key class, but you can implement your
+    # own generator. A cache key generator gets passed a request and generates the
+    # appropriate cache key.
+    #
+    # In addition to setting the generator to an object, you can just pass a block
+    # instead, which will act as the cache key generator:
+    #
+    #   set :cache_key do |request|
+    #     request.fullpath.replace(/\//, '-')
+    #   end
+    option_accessor :cache_key
+
+    # A URI specifying the entity-store implementation that should be used to
+    # store response bodies. See the metastore option for information on
+    # supported URI schemes.
+    #
+    # If no entity store is specified the 'heap:/' store is assumed. This
+    # implementation has significant draw-backs so explicit configuration is
+    # recommended.
+    option_accessor :entitystore
+
+    # The number of seconds that a cache entry should be considered
+    # "fresh" when no explicit freshness information is provided in
+    # a response. Explicit Cache-Control or Expires headers
+    # override this value.
+    #
+    # Default: 0
+    option_accessor :default_ttl
+
+    # Set of request headers that trigger "private" cache-control behavior
+    # on responses that don't explicitly state whether the response is
+    # public or private via a Cache-Control directive. Applications that use
+    # cookies for authorization may need to add the 'Cookie' header to this
+    # list.
+    #
+    # Default: ['Authorization', 'Cookie']
+    option_accessor :private_headers
+
+    # Specifies whether the client can force a cache reload by including a
+    # Cache-Control "no-cache" directive in the request. This is enabled by
+    # default for compliance with RFC 2616.
+    option_accessor :allow_reload
+
+    # Specifies whether the client can force a cache revalidate by including
+    # a Cache-Control "max-age=0" directive in the request. This is enabled by
+    # default for compliance with RFC 2616.
+    option_accessor :allow_revalidate
+
     def initialize(backend, options={})
       @backend = backend
       @trace = []
 
-      initialize_options options
+      initialize_options(options,
+        'rack-cache.cache_key'        => Utils::Key,
+        'rack-cache.verbose'          => true,
+        'rack-cache.storage'          => Rack::Cache::Storage.instance,
+        'rack-cache.metastore'        => 'heap:/',
+        'rack-cache.entitystore'      => 'heap:/',
+        'rack-cache.default_ttl'      => 0,
+        'rack-cache.private_headers'  => ['Authorization', 'Cookie'],
+        'rack-cache.allow_reload'     => false,
+        'rack-cache.allow_revalidate' => false
+      )
       yield self if block_given?
 
       @private_header_keys =
@@ -231,7 +313,7 @@ module Rack::Cache
       metastore.store(@request, response, entitystore)
       response.headers['Age'] = response.age.to_s
     end
-    
+
     def purge
       record :purge
       key = metastore.cache_key(@request)
